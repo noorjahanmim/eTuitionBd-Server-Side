@@ -37,17 +37,8 @@ async function run() {
     const applicationsCollection = db.collection('applications');
     const paymentsCollection = db.collection('payments');
 
-  
-
-
 
     //model api
-
-    // app.get('/users', async(req, res) =>{
-    //     const user =req.body;
-    //     const result = await usersCollection.insertOne(user);
-    //     res.send(result)
-    // })
 
     app.get('/users', async (req, res) => {
       const result = await usersCollection.find().toArray();
@@ -90,6 +81,33 @@ async function run() {
       });
     });
 
+
+   
+
+
+    // Express Server (index.js / app.js)
+app.patch('/users/:email', async (req, res) => {
+  const email = req.params.email;
+  const updatedData = req.body;
+  const query = { email: email };
+  
+  const updateDoc = {
+    $set: {
+      name: updatedData.name,
+      image: updatedData.image
+    },
+  };
+
+  // usersCollection 
+  const result = await usersCollection.updateOne(query, updateDoc);
+  
+  if (result.matchedCount === 0) {
+    return res.status(404).send({ message: "User not found in DB" });
+  }
+  
+  res.send(result);
+});
+
      // latest-tuitions 4 card for home page
     app.get('/latest-tuitions', async (req, res) => {
             const result = await tuitionCollection.find({status: "Approved"}).sort({ createdAt: -1 }).limit(4).toArray();
@@ -99,29 +117,15 @@ async function run() {
 // Latest tutor (4 card for home page)
 app.get('/latest-tutors', async (req, res) => {
   const result = await usersCollection
-    .find({ role: "Tutor" })       // role string হিসেবে দিতে হবে
-    .sort({ createdAt: -1 })       // নতুনগুলো আগে
-    .limit(4)                      // শুধু ৪টা
+    .find({ role: "Tutor" })       
+    .sort({ createdAt: -1 })       
+    .limit(4)                      
     .toArray();
   res.send(result);
 });
 
 
 // home page 
-
-
-//     app.get('/tuition', async (req, res) => {
-//       const result = await tuitionCollection.find().toArray();
-//       res.send(result);
-//     });
-
-//     //  Tuition details (details page)
-//     app.get('/tuition/:id', async (req, res) => {
-//   const id = req.params.id;
-//   const tuition = await tuitionCollection.findOne({ _id: new ObjectId(id) });
-//   res.send(tuition);
-// });
-
 
 
 // tuition details by id
@@ -197,7 +201,6 @@ app.post("/tuitions", async (req, res) => {
 });
 
 
-
 //////////////////////////////////////////////////////////
 //Post tuition
 
@@ -231,6 +234,48 @@ app.get("/tuitions/:id", async (req, res) => {
   }
 });
 
+
+
+// Apply for a tuition post (Details page - Tutor Apply)
+app.post('/apply-tuition', async (req, res) => {
+  const application = req.body;
+
+  // Add metadata
+  application.appliedAt = new Date();
+  application.status = "Pending";
+
+  // Ensure tuitionId is ObjectId
+  try {
+    application.tuitionId = new ObjectId(application.tuitionId);
+  } catch (err) {
+    return res.send({ success: false, message: "Invalid tuition ID format." });
+  }
+
+  // Check for duplicate
+  const existing = await applicationsCollection.findOne({
+    tuitionId: application.tuitionId,
+    tutorEmail: application.tutorEmail
+  });
+
+  if (existing) {
+    return res.send({
+      success: false,
+      message: "You have already applied for this tuition."
+    });
+  }
+
+  // Insert new application
+  const result = await applicationsCollection.insertOne(application);
+  res.send({
+    success: true,
+    message: "Application submitted successfully!",
+    insertedId: result.insertedId
+  });
+});
+
+
+
+
 // PUT: Update tuition post
 app.put("/tuitions/:id", async (req, res) => {
   try {
@@ -258,7 +303,8 @@ app.delete("/tuitions/:id", async (req, res) => {
     res.status(500).send({ message: "Internal Server Error" });
   }
 });
-////////////////////////////////////////////////
+
+///////////////// Student ///////////////////////////////
 
 
 // 1️⃣ Post new tuition
@@ -350,73 +396,7 @@ app.get('/payments/tutor/:email', async (req, res) => {
 });
 
 
-
-// // 1️⃣ Create new payment (after Stripe success)
-// router.post("/payments", async (req, res) => {
-//   const paymentData = req.body;
-//   paymentData.date = new Date().toISOString().split("T")[0];
-//   const result = await paymentsCollection.insertOne(paymentData);
-//   res.status(201).send(result);
-// });
-
-// // 2️⃣ Get all payments of a student
-// router.get("/payments/:email", async (req, res) => {
-//   const email = req.params.email;
-//   const result = await paymentsCollection.find({ studentEmail: email }).sort({ date: -1 }).toArray();
-//   res.send(result);
-// });
-
-// // 3️⃣ Get single payment by ID
-// router.get("/payment/:id", async (req, res) => {
-//   const id = req.params.id;
-//   const result = await paymentsCollection.findOne({ _id: new ObjectId(id) });
-//   res.send(result);
-// });
-
 // //////////////////////////////////////////////////////////////
-
-
-
-
-
-// app.post('/payments', async (req, res) => {
-//   const payment = req.body;
-
-//   if (!payment) {
-//     return res.status(400).send({ message: "Payment data missing" });
-//   }
-
-//   payment.createdAt = new Date();
-//   payment.status = 'Paid';
-
-//   const result = await paymentsCollection.insertOne(payment);
-//   res.send(result);
-// });
-   
-
-
-
-// app.get('/payments', async (req, res) => {
-//   const result = await paymentsCollection
-//     .find()
-//     .sort({ createdAt: -1 })
-//     .toArray();
-
-//   res.send(result);
-// });
-
-
-
-// app.get('/payments/student/:email', async (req, res) => {
-//   const { email } = req.params;
-
-//   const result = await paymentsCollection.find({
-//     studentEmail: email
-//   }).toArray();
-
-//   res.send(result);
-// });
-
 
 
 app.get('/tuitions', async (req, res) => {
@@ -486,6 +466,10 @@ app.put('/applications/:id', async (req, res) => {
   res.send(result);
 });
 
+
+
+
+
 // ✅ Tutor: Delete Application
 app.delete('/applications/:id', async (req, res) => {
   const { id } = req.params;
@@ -493,6 +477,7 @@ app.delete('/applications/:id', async (req, res) => {
   const result = await applicationsCollection.deleteOne({ _id: new ObjectId(id) });
   res.send(result);
 });
+
 
 // ✅ Tutor: Ongoing Tuitions
 app.get('/tutor/ongoing/:email', async (req, res) => {
@@ -512,17 +497,6 @@ app.get('/tutor/ongoing/:email', async (req, res) => {
   res.send(tuitions);
 });
 
-// // ✅ Tutor: Revenue History
-// app.get('/payments/tutor/:email', async (req, res) => {
-//   const { email } = req.params;
-
-//   const result = await paymentsCollection.find({
-//     tutorEmail: email,
-//     status: "Paid"
-//   }).sort({ createdAt: -1 }).toArray();
-
-//   res.send(result);
-// });
 
 // ✅ Tutor: Pagination-enabled Listing
 app.get('/tutors', async (req, res) => {
@@ -572,7 +546,6 @@ app.get('/tutors', async (req, res) => {
 
 
 
-
     app.get('/tutors/:id', async (req, res) => {
       const { id } = req.params;
       const result = await usersCollection.findOne({
@@ -618,9 +591,5 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 })
-
-
-
-
 
 
