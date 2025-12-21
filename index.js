@@ -39,6 +39,7 @@ app.post('/users', async (req, res) => {
   const user = req.body;
   user.createdAt = new Date();          
   const email = user.email;
+  user.photoURL = req.body.photoURL;
 
   // Check if user already exists
   const userExists = await usersCollection.findOne({ email });
