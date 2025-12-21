@@ -34,6 +34,30 @@ async function run() {
 
     // JWT Related APIs
 
+    // User create (Register & Login user info)
+app.post('/users', async (req, res) => {
+  const user = req.body;
+  user.createdAt = new Date();          
+  const email = user.email;
+
+  // Check if user already exists
+  const userExists = await usersCollection.findOne({ email });
+  if (userExists) {
+    return res.status(409).send({ message: 'User already exists' })
+  }
+
+  // Default role if not provided
+  if (!user.role) {
+    user.role = "Student";             
+  }
+
+
+  // Insert new user
+  const result = await usersCollection.insertOne(user);
+  res.send(result);
+});
+
+
     // Home page related APIs
     // Latest Tuition
     app.get('/latest-tuitions', async (req, res) => {
@@ -65,19 +89,6 @@ async function run() {
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
-
-    // GET: Single tuition by ID
-    // app.get("/tuitions/:id", async (req, res) => {
-    //   try {
-    //     const id = req.params.id;
-    //     const result = await tuitionCollection.findOne({ _id: new ObjectId(id) });
-    //     if (!result) return res.status(404).send({ message: "Tuition not found" });
-    //     res.send(result);
-    //   } catch (error) {
-    //     console.error("Error fetching tuition:", error);
-    //     res.status(500).send({ message: "Internal Server Error" });
-    //   }
-    // });
 
         // tuition details by id
     app.get('/tuitions/:id', async (req, res) => {
@@ -150,121 +161,67 @@ async function run() {
     });
 
 
-    // ✅ Tutor: Apply to Tuition (Dup )
-    // app.post('/applications', async (req, res) => {
-    //   const application = req.body;
+  // // ALL Tutor Page
+  //   //  All tutor
+  //     app.get('/tutors', async (req, res) => {
+  //     const limit = parseInt(req.query.limit) || 6;
 
-    //   if (!application) {
-    //     return res.status(400).send({ message: "Application data missing" });
-    //   }
+  //     const result = await usersCollection
+  //       .find({ role: "Tutor", status: "Active" })
+  //       .sort({ createdAt: -1 })
+  //       .limit(limit)
+  //       .toArray();
 
-    //   application.createdAt = new Date();
-    //   application.status = "Pending";
+  //     res.send(result);
+  //   });
 
-    //   const result = await applicationsCollection.insertOne(application);
-    //   res.send(result);
-    // });
+  //   // Tutor details
+  //   app.get('/tutors/:id', async (req, res) => {
+  //     const { id } = req.params;
+  //     const result = await usersCollection.findOne({
+  //       _id: new ObjectId(id)
+  //     });
+  //     res.send(result);
+  //   });
 
-    
 
 
-  // ALL Tutor Page
-    //  All tutor
-      app.get('/tutors', async (req, res) => {
-      const limit = parseInt(req.query.limit) || 6;
+  // All Tutors - show all without limit
+app.get('/tutors', async (req, res) => {
+  try {
+    const result = await usersCollection
+      .find({ role: "Tutor", status: "Active" })
+      .sort({ createdAt: -1 })
+      .toArray();  
 
-      const result = await usersCollection
-        .find({ role: "Tutor", status: "Active" })
-        .sort({ createdAt: -1 })
-        .limit(limit)
-        .toArray();
+    res.send(result);
+  } catch (error) {
+    console.error("Error fetching tutors:", error);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
 
-      res.send(result);
-    });
-
-    // Tutor details
+// Tutor details
 app.get('/tutors/:id', async (req, res) => {
-      const { id } = req.params;
-      const result = await usersCollection.findOne({
-        _id: new ObjectId(id)
-      });
-      res.send(result);
-    });
+  try {
+    const { id } = req.params;
+    const result = await usersCollection.findOne({ _id: new ObjectId(id) });
+    if (!result) {
+      return res.status(404).send({ message: "Tutor not found" });
+    }
+    res.send(result);
+  } catch (error) {
+    console.error("Error fetching tutor details:", error);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
 
 
 
 
 
 
-    app.post('/users', async (req, res) => {
-      console.log("REQ BODY:", req.body);
-
-      const user = req.body;
-
-      if (!user || Object.keys(user).length === 0) {
-        return res.status(400).send({ message: "User data missing" });
-      }
-
-      const result = await usersCollection.insertOne(user);
-      res.send(result);
-    });
-
-
-
-
-
-    app.post('/users/login', async (req, res) => {
-      const { email, uid } = req.body;
-
-      const user = await usersCollection.findOne({ email });
-
-      if (!user) {
-        return res.status(404).send({ message: 'User not found' });
-      }
-
-      // আপাতত token fake রাখলাম
-      const token = 'dummy-jwt-token';
-
-      res.send({
-        token,
-        user
-      });
-    });
-
-
-
-
-
-    // Express Server (index.js / app.js)
-    app.patch('/users/:email', async (req, res) => {
-      const email = req.params.email;
-      const updatedData = req.body;
-      const query = { email: email };
-
-      const updateDoc = {
-        $set: {
-          name: updatedData.name,
-          image: updatedData.image
-        },
-      };
-
-
-
-      // usersCollection 
-      const result = await usersCollection.updateOne(query, updateDoc);
-
-      if (result.matchedCount === 0) {
-        return res.status(404).send({ message: "User not found in DB" });
-      }
-
-      res.send(result);
-    });
-
-
-
-
-
-
+// 
 
     app.post('/applications', async (req, res) => {
       const application = req.body;
@@ -280,29 +237,21 @@ app.get('/tutors/:id', async (req, res) => {
     });
 
 
-    app.get('/applications', async (req, res) => {
-      const result = await applicationsCollection
-        .find()
-        .sort({ createdAt: -1 })
-        .toArray();
-
-      res.send(result);
-    });
-
-
-    app.get('/applications/tutor/:tutorId', async (req, res) => {
-      const { tutorId } = req.params;
-
-      const result = await applicationsCollection.find({
-        tutorId
-      }).toArray();
-
-      res.send(result);
-    });
 
 
 
-    // POST: Create new tuition post
+    
+
+
+
+
+
+
+    ///////////////// Student ///////////////////////////////
+
+
+
+        // POST: Create new tuition post
     app.post("/tuitions", async (req, res) => {
       try {
         const tuitionData = req.body;
@@ -323,10 +272,6 @@ app.get('/tutors/:id', async (req, res) => {
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
-
-
-
-    ///////////////// Student ///////////////////////////////
 
 
     // PUT: Update tuition post
@@ -358,14 +303,7 @@ app.get('/tutors/:id', async (req, res) => {
     });
 
 
-    // 1️⃣ Post new tuition
-    app.post("/tuitions", async (req, res) => {
-      const tuitionData = req.body;
-      tuitionData.status = "pending"; // default status
-      tuitionData.createdAt = new Date();
-      const result = await tuitionCollection.insertOne(tuitionData);
-      res.status(201).send(result);
-    });
+   
 
     // 2️⃣ Get all tuitions (optional filter by studentEmail)
     app.get("/tuitions", async (req, res) => {
@@ -415,6 +353,27 @@ app.get('/tutors/:id', async (req, res) => {
     
 
     // ////////////////////////Tutor//////////////////////////////////////
+        app.get('/applications', async (req, res) => {
+      const result = await applicationsCollection
+        .find()
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.send(result);
+    });
+
+
+    
+    app.get('/applications/tutor/:tutorId', async (req, res) => {
+      const { tutorId } = req.params;
+
+      const result = await applicationsCollection.find({
+        tutorId
+      }).toArray();
+
+      res.send(result);
+    });
+
 
     // ✅ Tutor: View Own Applications
     app.get('/applications/tutor/:email', async (req, res) => {
@@ -426,6 +385,8 @@ app.get('/tutors/:id', async (req, res) => {
 
       res.send(result);
     });
+
+
 
     // ✅ Tutor: Update Application
     app.put('/applications/:id', async (req, res) => {
@@ -472,31 +433,7 @@ app.get('/tutors/:id', async (req, res) => {
     });
 
 
-    // ✅ Tutor: Pagination-enabled Listing
-    app.get('/tutors', async (req, res) => {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 6;
-      const skip = (page - 1) * limit;
-
-      const cursor = usersCollection
-        .find({ role: "Tutor", status: "Active" })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit);
-
-      const tutors = await cursor.toArray();
-      const totalTutors = await usersCollection.countDocuments({ role: "Tutor", status: "Active" });
-
-      res.send({
-        totalTutors,
-        page,
-        limit,
-        totalPages: Math.ceil(totalTutors / limit),
-        tutors
-      });
-    });
-
-
+   
 
 
 
@@ -554,5 +491,154 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 })
+
+
+
+
+  // Express Server (index.js / app.js) ,,,,
+    // app.patch('/users/:email', async (req, res) => {
+    //   const email = req.params.email;
+    //   const updatedData = req.body;
+    //   const query = { email: email };
+
+    //   const updateDoc = {
+    //     $set: {
+    //       name: updatedData.name,
+    //       image: updatedData.image
+    //     },
+    //   };
+
+    //   // usersCollection 
+    //   const result = await usersCollection.updateOne(query, updateDoc);
+
+    //   if (result.matchedCount === 0) {
+    //     return res.status(404).send({ message: "User not found in DB" });
+    //   }
+
+    //   res.send(result);
+    // });
+
+
+
+     // 1️⃣ Post new tuition
+    // app.post("/tuitions", async (req, res) => {
+    //   const tuitionData = req.body;
+    //   tuitionData.status = "pending"; // default status
+    //   tuitionData.createdAt = new Date();
+    //   const result = await tuitionCollection.insertOne(tuitionData);
+    //   res.status(201).send(result);
+    // });
+
+
+
+    // ✅ Tutor: Pagination-enabled Listing
+    // app.get('/tutors', async (req, res) => {
+    //   const page = parseInt(req.query.page) || 1;
+    //   const limit = parseInt(req.query.limit) || 6;
+    //   const skip = (page - 1) * limit;
+
+    //   const cursor = usersCollection
+    //     .find({ role: "Tutor", status: "Active" })
+    //     .sort({ createdAt: -1 })
+    //     .skip(skip)
+    //     .limit(limit);
+
+    //   const tutors = await cursor.toArray();
+    //   const totalTutors = await usersCollection.countDocuments({ role: "Tutor", status: "Active" });
+
+    //   res.send({
+    //     totalTutors,
+    //     page,
+    //     limit,
+    //     totalPages: Math.ceil(totalTutors / limit),
+    //     tutors
+    //   });
+    // });
+
+
+
+    // ✅ Tutor: Pagination-enabled Listing with Search
+// app.get('/tutors', async (req, res) => {
+//   try {
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 6;
+//     const skip = (page - 1) * limit;
+//     const search = req.query.search || "";
+
+//     // Base query
+//     let query = { role: "Tutor", status: "Active" };
+
+//     // Optional search by name or subject
+//     if (search) {
+//       query = {
+//         ...query,
+//         $or: [
+//           { name: { $regex: search, $options: "i" } },
+//           { subject: { $regex: search, $options: "i" } }
+//         ]
+//       };
+//     }
+
+//     // Fetch tutors with pagination
+//     const cursor = usersCollection
+//       .find(query)
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(limit);
+
+//     const tutors = await cursor.toArray();
+//     const totalTutors = await usersCollection.countDocuments(query);
+
+//     res.send({
+//       totalTutors,
+//       page,
+//       limit,
+//       totalPages: Math.ceil(totalTutors / limit),
+//       tutors
+//     });
+//   } catch (error) {
+//     console.error("Error fetching tutors:", error);
+//     res.status(500).send({ message: "Internal Server Error" });
+//   }
+// });
+
+
+
+
+
+// // All Tutors - show all without limit
+// app.get('/tutors', async (req, res) => {
+//   try {
+//     const search = req.query.search || "";
+
+//     let query = { role: "Tutor", status: "Active" };
+
+//     // Optional search by name or subject
+//     if (search) {
+//       query = {
+//         ...query,
+//         $or: [
+//           { name: { $regex: search, $options: "i" } },
+//           { subject: { $regex: search, $options: "i" } }
+//         ]
+//       };
+//     }
+
+//     const tutors = await usersCollection
+//       .find(query)
+//       .sort({ createdAt: -1 })
+//       .toArray();
+
+//     res.send(tutors);
+//   } catch (error) {
+//     console.error("Error fetching tutors:", error);
+//     res.status(500).send({ message: "Internal Server Error" });
+//   }
+// });
+
+
+
+
+// 
 
 
