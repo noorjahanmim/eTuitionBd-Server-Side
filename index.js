@@ -268,17 +268,40 @@ app.delete("/applications/:id", async (req, res) => {
 
 
 
+// app.patch("/applications/:id", async (req, res) => {
+//   const id = req.params.id;
+//   const { status } = req.body;
+
+//   const result = await applicationsCollection.updateOne(
+//     { _id: new ObjectId(id) },
+//     { $set: { status } }
+//   );
+
+//   res.send(result);
+
+// });
+
+
 app.patch("/applications/:id", async (req, res) => {
   const id = req.params.id;
   const { status } = req.body;
 
+  // Update application status
   const result = await applicationsCollection.updateOne(
     { _id: new ObjectId(id) },
     { $set: { status } }
   );
 
-  res.send(result);
+  // যদি Approved হয় → tuition status Ongoing করে দাও
+  if (status === "Approved") {
+    const application = await applicationsCollection.findOne({ _id: new ObjectId(id) });
+    await tuitionCollection.updateOne(
+      { _id: application.tuitionId },
+      { $set: { status: "Ongoing", tutorEmail: application.tutorEmail } }
+    );
+  }
 
+  res.send(result);
 });
 
 
