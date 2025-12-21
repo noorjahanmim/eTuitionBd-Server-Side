@@ -29,10 +29,10 @@ async function run() {
     const db = client.db('eTuitionBdDB');
     const usersCollection = db.collection('users');
     const tuitionCollection = db.collection('tuition');
-    // const applicationsCollection = db.collection('applications');
     const applicationsCollection = db.collection("applications");
     const paymentsCollection = db.collection('payments');
     const TuitionCollection = db.collection("tuitions");
+    // const applyTuitionCollection = db.collection("applications");
 
     // JWT Related APIs
 
@@ -197,7 +197,24 @@ app.get('/tutors/:id', async (req, res) => {
 
 
 
+
+
+
 //////////////////Tutor dashboard API///////////////////////
+
+
+// Get all applications
+app.get("/applications", async (req, res) => {
+  try {
+    const result = await applicationsCollection.find().toArray();
+    res.send(result);
+  } catch (error) {
+    console.error("Error fetching applications:", error);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
+
+
 
 app.post("/applications", async (req, res) => {
   const data = req.body;
@@ -211,6 +228,7 @@ app.post("/applications", async (req, res) => {
   if (exists) {
     return res.status(409).send({ message: "Already applied" });
   }
+  
 
   const result = await applicationsCollection.insertOne(data);
   res.send(result);
@@ -264,6 +282,62 @@ app.patch("/applications/:id", async (req, res) => {
 });
 
 
+//////////////// Student applied tutors dashboard  ////////////////////////////
+
+
+
+// // GET /applications/student/:email
+app.get('/applications/student/:email', async (req, res) => {
+  try {
+    const studentEmail = req.params.email;
+
+    // Basic input check (optional but helpful)
+    if (!studentEmail || typeof studentEmail !== 'string') {
+      return res.status(400).send({ message: 'Invalid email parameter' });
+    }
+
+    const result = await applyTuitionCollection.aggregate([
+      {
+        $lookup: {
+          from: 'tuitions',
+          localField: 'tuitionId',      
+          foreignField: '_id',          
+          as: 'tuitionInfo'
+        }
+      },
+      { $unwind: '$tuitionInfo' },
+      {
+        $match: {
+          'tuitionInfo.studentEmail': studentEmail,
+          'tuitionInfo.status': 'Approved'
+        }
+      },
+      // Optional: project only what you need
+      // {
+      //   $project: {
+      //     _id: 1,
+      //     applicantEmail: 1,
+      //     tuitionId: 1,
+      //     tuitionInfo: {
+      //       subject: 1,
+      //       class: 1,
+      //       location: 1,
+      //       studentEmail: 1,
+      //       status: 1
+      //     },
+      //     createdAt: 1
+      //   }
+      // }
+    ]).toArray();
+
+    res.send(result);
+  } catch (error) {
+    console.error('GET /applications/student/:email error:', error);
+    res.status(500).send({ message: 'Server error', error: error?.message });
+  }
+});
+
+
 
 //////////////////// Admin dashboard  //////////////////////////////////
 
@@ -306,7 +380,7 @@ app.patch("/tuitions/:id/status", async (req, res) => {
 
 
 
-    ///////////////// Student ///////////////////////////////
+    ///////////////// Student //////////////////////////
 
         // POST: Create new tuition post
     app.post("/tuitions", async (req, res) => {
