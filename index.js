@@ -292,7 +292,7 @@ app.patch("/applications/:id", async (req, res) => {
     { $set: { status } }
   );
 
-  // যদি Approved হয় → tuition status Ongoing করে দাও
+  
   if (status === "Approved") {
     const application = await applicationsCollection.findOne({ _id: new ObjectId(id) });
     await tuitionCollection.updateOne(
@@ -550,8 +550,12 @@ app.put("/users/:id", async (req, res) => {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+
+    
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
+
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
