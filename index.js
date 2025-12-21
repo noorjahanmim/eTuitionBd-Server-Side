@@ -262,9 +262,6 @@ app.patch("/applications/:id", async (req, res) => {
 });
 
 
-//////////////////////////////////////////////////////////// 
-
-
 
     ///////////////// Student ///////////////////////////////
 
@@ -364,115 +361,6 @@ app.patch("/applications/:id", async (req, res) => {
     });
 
 
-    
-
-    // ////////////////////////Tutor//////////////////////////////////////
-
-
-
-
-    
-
-    //     app.get('/applications', async (req, res) => {
-    //   const result = await applicationsCollection
-    //     .find()
-    //     .sort({ createdAt: -1 })
-    //     .toArray();
-
-    //   res.send(result);
-    // });
-
-
-    
-    // app.get('/applications/tutor/:tutorId', async (req, res) => {
-    //   const { tutorId } = req.params;
-
-    //   const result = await applicationsCollection.find({
-    //     tutorId
-    //   }).toArray();
-
-    //   res.send(result);
-    // });
-
-
-    // // ✅ Tutor: View Own Applications
-    // app.get('/applications/tutor/:email', async (req, res) => {
-    //   const { email } = req.params;
-
-    //   const result = await applicationsCollection.find({
-    //     tutorEmail: email
-    //   }).sort({ createdAt: -1 }).toArray();
-
-    //   res.send(result);
-    // });
-
-
-
-    // // ✅ Tutor: Update Application
-    // app.put('/applications/:id', async (req, res) => {
-    //   const { id } = req.params;
-    //   const updateData = req.body;
-
-    //   const result = await applicationsCollection.updateOne(
-    //     { _id: new ObjectId(id) },
-    //     { $set: updateData }
-    //   );
-
-    //   res.send(result);
-    // });
-
-
-
-
-
-    // // ✅ Tutor: Delete Application
-    // app.delete('/applications/:id', async (req, res) => {
-    //   const { id } = req.params;
-
-    //   const result = await applicationsCollection.deleteOne({ _id: new ObjectId(id) });
-    //   res.send(result);
-    // });
-
-
-    // // ✅ Tutor: Ongoing Tuitions
-    // app.get('/tutor/ongoing/:email', async (req, res) => {
-    //   const { email } = req.params;
-
-    //   const approvedApps = await applicationsCollection.find({
-    //     tutorEmail: email,
-    //     status: "Approved"
-    //   }).toArray();
-
-    //   const tuitionIds = approvedApps.map(app => new ObjectId(app.tuitionId));
-
-    //   const tuitions = await tuitionCollection.find({
-    //     _id: { $in: tuitionIds }
-    //   }).toArray();
-
-    //   res.send(tuitions);
-    // });
-
-
-   
-
-
-
-
-    // app.get('/students', async (req, res) => {
-    //   const result = await usersCollection.find({ role: "Student" }).toArray();
-    //   res.send(result);
-    // });
-
-
-
-
-//////////////////////////////// Admin   ////////////////////////////////////////
-
-  //  Get all user
-    // app.get('/users', async (req, res) => {
-    //   const result = await usersCollection.find().toArray();
-    //   res.send(result);
-    // });
 
 // GET all users
 app.get("/users", async (req, res) => {
