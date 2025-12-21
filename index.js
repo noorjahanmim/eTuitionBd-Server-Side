@@ -32,6 +32,7 @@ async function run() {
     // const applicationsCollection = db.collection('applications');
     const applicationsCollection = db.collection("applications");
     const paymentsCollection = db.collection('payments');
+    const TuitionCollection = db.collection("tuitions");
 
     // JWT Related APIs
 
@@ -259,7 +260,49 @@ app.patch("/applications/:id", async (req, res) => {
   );
 
   res.send(result);
+
 });
+
+
+
+//////////////////// Admin dashboard  //////////////////////////////////
+
+// Get All Tuitions
+app.get("/tuitions", async (req, res) => {
+  try {
+    const tuitions = await TuitionCollection.find().toArray();
+    res.send(tuitions);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to load tuitions" });
+  }
+});
+
+
+
+// Update Status (Approve / Reject)
+app.patch("/tuitions/:id/status", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { status } = req.body;
+
+    if (!["Approved", "Rejected"].includes(status)) {
+      return res.status(400).send({ message: "Invalid status" });
+    }
+
+    const result = await TuitionCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status } }
+    );
+
+    res.send({
+      success: true,
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    res.status(500).send({ message: "Failed to update status" });
+  }
+});
+
 
 
 
@@ -316,8 +359,6 @@ app.patch("/applications/:id", async (req, res) => {
       }
     });
 
-
-   
 
     // 2️⃣ Get all tuitions (optional filter by studentEmail)
     app.get("/tuitions", async (req, res) => {
@@ -401,12 +442,6 @@ app.put("/users/:id", async (req, res) => {
 });
 
 
-
-
-
-
-
-
   // Dashboard role (Role base conditional rendering)
     app.get('/users/:email/role', async (req, res) => {
       const email = req.params.email;
@@ -414,12 +449,7 @@ app.put("/users/:id", async (req, res) => {
       const user = await usersCollection.findOne(query);
       // res.send({ role: user?.role })
       res.send({ role: user?.role || "User" });
-
-
-
-      
     })
-
 
 
     // Send a ping to confirm a successful connection
