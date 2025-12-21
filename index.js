@@ -29,7 +29,8 @@ async function run() {
     const db = client.db('eTuitionBdDB');
     const usersCollection = db.collection('users');
     const tuitionCollection = db.collection('tuition');
-    const applicationsCollection = db.collection('applications');
+    // const applicationsCollection = db.collection('applications');
+    const applicationsCollection = db.collection("applications");
     const paymentsCollection = db.collection('payments');
 
     // JWT Related APIs
@@ -39,7 +40,7 @@ app.post('/users', async (req, res) => {
   const user = req.body;
   user.createdAt = new Date();          
   const email = user.email;
-  user.photoURL = req.body.photoURL;
+  user.photoUrl = req.body.photoUrl;
 
   // Check if user already exists
   const userExists = await usersCollection.findOne({ email });
@@ -162,30 +163,6 @@ app.post('/users', async (req, res) => {
     });
 
 
-  // // ALL Tutor Page
-  //   //  All tutor
-  //     app.get('/tutors', async (req, res) => {
-  //     const limit = parseInt(req.query.limit) || 6;
-
-  //     const result = await usersCollection
-  //       .find({ role: "Tutor", status: "Active" })
-  //       .sort({ createdAt: -1 })
-  //       .limit(limit)
-  //       .toArray();
-
-  //     res.send(result);
-  //   });
-
-  //   // Tutor details
-  //   app.get('/tutors/:id', async (req, res) => {
-  //     const { id } = req.params;
-  //     const result = await usersCollection.findOne({
-  //       _id: new ObjectId(id)
-  //     });
-  //     res.send(result);
-  //   });
-
-
 
   // All Tutors - show all without limit
 app.get('/tutors', async (req, res) => {
@@ -219,38 +196,77 @@ app.get('/tutors/:id', async (req, res) => {
 
 
 
+//////////////////Tutor dashboard API///////////////////////
+
+app.post("/applications", async (req, res) => {
+  const data = req.body;
+
+  // 🔒 Prevent Duplicate Apply (same tutor → same tuition)
+  const exists = await applicationsCollection.findOne({
+    tutorEmail: data.tutorEmail,
+    tuitionId: data.tuitionId
+  });
+
+  if (exists) {
+    return res.status(409).send({ message: "Already applied" });
+  }
+
+  const result = await applicationsCollection.insertOne(data);
+  res.send(result);
+});
+
+
+  
+
+
+app.get("/applications/tutor/:email", async (req, res) => {
+  const email = req.params.email;
+  const result = await applicationsCollection
+    .find({ tutorEmail: email })
+    .toArray();
+  res.send(result);
+});
 
 
 
-// 
-
-    app.post('/applications', async (req, res) => {
-      const application = req.body;
-
-      if (!application) {
-        return res.status(400).send({ message: "Application data missing" });
-      }
-
-      application.createdAt = new Date();
-
-      const result = await applicationsCollection.insertOne(application);
-      res.send(result);
-    });
+app.get("/applications/tuition/:id", async (req, res) => {
+  const id = req.params.id;
+  const result = await applicationsCollection
+    .find({ tuitionId: id })
+    .toArray();
+  res.send(result);
+});
 
 
 
+app.delete("/applications/:id", async (req, res) => {
+  const id = req.params.id;
+  const result = await applicationsCollection.deleteOne({
+    _id: new ObjectId(id)
+  });
+  res.send(result);
+});
 
 
-    
+
+app.patch("/applications/:id", async (req, res) => {
+  const id = req.params.id;
+  const { status } = req.body;
+
+  const result = await applicationsCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { status } }
+  );
+
+  res.send(result);
+});
 
 
-
+//////////////////////////////////////////////////////////// 
 
 
 
     ///////////////// Student ///////////////////////////////
-
-
 
         // POST: Create new tuition post
     app.post("/tuitions", async (req, res) => {
@@ -347,95 +363,97 @@ app.get('/tutors/:id', async (req, res) => {
       res.send(result);
     });
 
-  
-
-
 
     
 
     // ////////////////////////Tutor//////////////////////////////////////
-        app.get('/applications', async (req, res) => {
-      const result = await applicationsCollection
-        .find()
-        .sort({ createdAt: -1 })
-        .toArray();
 
-      res.send(result);
-    });
+
 
 
     
-    app.get('/applications/tutor/:tutorId', async (req, res) => {
-      const { tutorId } = req.params;
 
-      const result = await applicationsCollection.find({
-        tutorId
-      }).toArray();
+    //     app.get('/applications', async (req, res) => {
+    //   const result = await applicationsCollection
+    //     .find()
+    //     .sort({ createdAt: -1 })
+    //     .toArray();
 
-      res.send(result);
-    });
-
-
-    // ✅ Tutor: View Own Applications
-    app.get('/applications/tutor/:email', async (req, res) => {
-      const { email } = req.params;
-
-      const result = await applicationsCollection.find({
-        tutorEmail: email
-      }).sort({ createdAt: -1 }).toArray();
-
-      res.send(result);
-    });
+    //   res.send(result);
+    // });
 
 
+    
+    // app.get('/applications/tutor/:tutorId', async (req, res) => {
+    //   const { tutorId } = req.params;
 
-    // ✅ Tutor: Update Application
-    app.put('/applications/:id', async (req, res) => {
-      const { id } = req.params;
-      const updateData = req.body;
+    //   const result = await applicationsCollection.find({
+    //     tutorId
+    //   }).toArray();
 
-      const result = await applicationsCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: updateData }
-      );
+    //   res.send(result);
+    // });
 
-      res.send(result);
-    });
+
+    // // ✅ Tutor: View Own Applications
+    // app.get('/applications/tutor/:email', async (req, res) => {
+    //   const { email } = req.params;
+
+    //   const result = await applicationsCollection.find({
+    //     tutorEmail: email
+    //   }).sort({ createdAt: -1 }).toArray();
+
+    //   res.send(result);
+    // });
 
 
 
+    // // ✅ Tutor: Update Application
+    // app.put('/applications/:id', async (req, res) => {
+    //   const { id } = req.params;
+    //   const updateData = req.body;
+
+    //   const result = await applicationsCollection.updateOne(
+    //     { _id: new ObjectId(id) },
+    //     { $set: updateData }
+    //   );
+
+    //   res.send(result);
+    // });
 
 
-    // ✅ Tutor: Delete Application
-    app.delete('/applications/:id', async (req, res) => {
-      const { id } = req.params;
-
-      const result = await applicationsCollection.deleteOne({ _id: new ObjectId(id) });
-      res.send(result);
-    });
 
 
-    // ✅ Tutor: Ongoing Tuitions
-    app.get('/tutor/ongoing/:email', async (req, res) => {
-      const { email } = req.params;
 
-      const approvedApps = await applicationsCollection.find({
-        tutorEmail: email,
-        status: "Approved"
-      }).toArray();
+    // // ✅ Tutor: Delete Application
+    // app.delete('/applications/:id', async (req, res) => {
+    //   const { id } = req.params;
 
-      const tuitionIds = approvedApps.map(app => new ObjectId(app.tuitionId));
+    //   const result = await applicationsCollection.deleteOne({ _id: new ObjectId(id) });
+    //   res.send(result);
+    // });
 
-      const tuitions = await tuitionCollection.find({
-        _id: { $in: tuitionIds }
-      }).toArray();
 
-      res.send(tuitions);
-    });
+    // // ✅ Tutor: Ongoing Tuitions
+    // app.get('/tutor/ongoing/:email', async (req, res) => {
+    //   const { email } = req.params;
+
+    //   const approvedApps = await applicationsCollection.find({
+    //     tutorEmail: email,
+    //     status: "Approved"
+    //   }).toArray();
+
+    //   const tuitionIds = approvedApps.map(app => new ObjectId(app.tuitionId));
+
+    //   const tuitions = await tuitionCollection.find({
+    //     _id: { $in: tuitionIds }
+    //   }).toArray();
+
+    //   res.send(tuitions);
+    // });
 
 
    
-
 
 
 
@@ -451,10 +469,54 @@ app.get('/tutors/:id', async (req, res) => {
 //////////////////////////////// Admin   ////////////////////////////////////////
 
   //  Get all user
-    app.get('/users', async (req, res) => {
-      const result = await usersCollection.find().toArray();
-      res.send(result);
-    });
+    // app.get('/users', async (req, res) => {
+    //   const result = await usersCollection.find().toArray();
+    //   res.send(result);
+    // });
+
+// GET all users
+app.get("/users", async (req, res) => {
+  try {
+    const result = await usersCollection.find().toArray();
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to load users" });
+  }
+});
+
+// DELETE user
+app.delete("/users/:id", async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const result = await usersCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Delete failed" });
+  }
+});
+
+// UPDATE user role / status
+app.put("/users/:id", async (req, res) => {
+  const id = req.params.id;
+  const update = req.body;
+
+  try {
+    const result = await usersCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: update }
+    );
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Update failed" });
+  }
+});
+
+
+
+
+
+
 
 
   // Dashboard role (Role base conditional rendering)
@@ -462,7 +524,12 @@ app.get('/tutors/:id', async (req, res) => {
       const email = req.params.email;
       const query = { email }
       const user = await usersCollection.findOne(query);
-      res.send({ role: user?.role })
+      // res.send({ role: user?.role })
+      res.send({ role: user?.role || "User" });
+
+
+
+      
     })
 
 
@@ -476,13 +543,6 @@ app.get('/tutors/:id', async (req, res) => {
   }
 }
 run().catch(console.dir);
-
-
-
-
-
-
-
 
 
 app.get('/', (req, res) => {
@@ -640,6 +700,6 @@ app.listen(port, () => {
 
 
 
-// 
+
 
 
