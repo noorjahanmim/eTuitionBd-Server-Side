@@ -35,9 +35,6 @@ async function run() {
     const applicationsCollection = db.collection("applications");
 
 
-
-
-
     // User create (Register & Login user info)
 app.post('/users', async (req, res) => {
   const user = req.body;
@@ -63,44 +60,107 @@ app.post('/users', async (req, res) => {
 });
 
 
-
 //////////////Get all tuition\\\\\\\\\\\\\\\\\
 
 
 // GET all tuitions with optional filters
+
+
+/////sudhu approve show hobe/////
+
+
 app.get("/tuitions", async (req, res) => {
   try {
-    const { studentEmail, subject, location, className, sort, page = 1, limit = 6 } = req.query;
-
-    let query = {};
-    if (studentEmail) query.studentEmail = studentEmail;
-    if (subject) query.subject = { $regex: subject, $options: "i" };
-    if (location) query.location = { $regex: location, $options: "i" };
-    if (className) query.class = className;
-
-    let cursor = tuitionCollection.find(query);
-
-    if (sort === "budget") cursor = cursor.sort({ budget: 1 });
-    if (sort === "date") cursor = cursor.sort({ createdAt: -1 });
-
-    const result = await cursor
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit))
+    const tuitions = await tuitionCollection
+      .find({ status: "Approved" })
+      .sort({ createdAt: -1 }) 
       .toArray();
 
-    res.send(result);
+    res.send(tuitions);
   } catch (error) {
-    console.error("Error fetching tuitions:", error);
+    console.error(error);
     res.status(500).send({ message: "Internal Server Error" });
   }
 });
 
 
 
+///////////////Add/////////////
+
+app.post("/tuitions", async (req, res) => {
+  try {
+    const tuitionData = req.body;
+
+    tuitionData.status = "Approved"; 
+    tuitionData.createdAt = new Date();
+
+    const result = await tuitionCollection.insertOne(tuitionData);
+    res.send(result);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: "Failed to Post Tuition" });
+  }
+});
 
 
+///////Student নিজের Tuition দেখবে (সব status সহ)////////
+
+ app.get("/my-tuitions/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await tuitionCollection.find({ studentEmail: email }).sort({ createdAt: -1 }).toArray();
+      res.send(result);
+    });
 
 
+/////////////Admin Panel: Pending Tuitions/////////
+
+
+app.get("/tuitions/admin", async (req, res) => {
+  try {
+    const tuitions = await tuitionCollection
+      .find({ status: "pending" })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.send(tuitions);
+  } catch {
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
+
+////////////Admin → Approve Button API///////////////
+
+
+app.patch("/tuitions/approve/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const result = await tuitionCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: "Approved" } }
+    );
+    res.send(result);
+  } catch {
+    res.status(500).send({ message: "Failed to Approve" });
+  }
+});
+
+
+///////////// Admin → Reject Button API//////////////////
+
+app.patch("/tuitions/reject/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const result = await tuitionCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: "Rejected" } }
+    );
+    res.send(result);
+  } catch {
+    res.status(500).send({ message: "Failed to Reject" });
+  }
+});
+
+//////////////////////////////////////////////////////////////////////
 // Create Stripe checkout session
 app.post('/payment-checkout-session', async (req, res) => {
   try {
@@ -228,22 +288,6 @@ app.patch('/payment-success', async (req, res) => {
       });
 
   // All Tuition Page
-    // All tuition
-        // GET: All tuitions 
-    // app.get("/tuitions", async (req, res) => {
-    //   try {
-    //     const { studentEmail } = req.query;
-    //     let query = {};
-    //     if (studentEmail) {
-    //       query.studentEmail = studentEmail;
-    //     }
-    //     const result = await tuitionCollection.find(query).sort({ createdAt: -1 }).toArray();
-    //     res.send(result);
-    //   } catch (error) {
-    //     console.error("Error fetching tuitions:", error);
-    //     res.status(500).send({ message: "Internal Server Error" });
-    //   }
-    // });
 
         // tuition details by id
     app.get('/tuitions/:id', async (req, res) => {
@@ -255,7 +299,7 @@ app.patch('/payment-success', async (req, res) => {
       res.send(tuition);
     });
 
-    // Apply tutor      //////////////////////////////////////////////////////////////
+    // Apply tutor////////////////////////////////////////////////////
 
 
 app.post("/apply-tuition", async (req, res) => {
@@ -301,46 +345,41 @@ app.post("/apply-tuition", async (req, res) => {
 });  
 ///////////////////// Student application api///////////////////
 
-app.get("/applications/student/:email", async (req, res) => {
-  const email = req.params.email;
 
+app.get('/applications/student/:email', async (req, res) => {
   try {
-    const result = await applicationsCollection
+    const email = req.params.email;
+
+    const applications = await applicationsCollection
       .find({ studentEmail: email })
       .sort({ createdAt: -1 })
       .toArray();
 
-    res.send(result);
-  } catch (error) {
-    console.log("Student Applications Error:", error);
-    res.status(500).send({ error: "Failed to load applications" });
+    res.send(applications);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch applications" });
   }
 });
 
 
+
+////////students tar tuition dekhte parbe/////////////
+
+ app.get("/my-tuitions/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await tuitionCollection.find({ studentEmail: email }).sort({ createdAt: -1 }).toArray();
+      res.send(result);
+    });
+
+
+
+
+
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////
-    // Sorting (All tuition page)
-    // app.get('/tuitions', async (req, res) => {
-    //   const { subject, location, className, sort, page = 1, limit = 6 } = req.query;
 
-    //   let query = { status: "Approved" };
-
-    //   if (subject) query.subject = { $regex: subject, $options: "i" };
-    //   if (location) query.location = { $regex: location, $options: "i" };
-    //   if (className) query.class = className;
-
-    //   let cursor = tuitionCollection.find(query);
-
-    //   if (sort === "budget") cursor = cursor.sort({ budget: 1 });
-    //   if (sort === "date") cursor = cursor.sort({ createdAt: -1 });
-
-    //   const result = await cursor
-    //     .skip((page - 1) * limit)
-    //     .limit(parseInt(limit))
-    //     .toArray();
-
-    //   res.send(result);
-    // });
 
 
 
@@ -431,13 +470,13 @@ app.get('/tutors/:id', async (req, res) => {
     });
 
 
-    // 2️⃣ Get all tuitions (optional filter by studentEmail)
-    // app.get("/tuitions", async (req, res) => {
-    //   const { studentEmail } = req.query;
-    //   const query = studentEmail ? { studentEmail } : {};
-    //   const result = await tuitionCollection.find(query).sort({ createdAt: -1 }).toArray();
-    //   res.send(result);
-    // });
+   // 2️⃣ Get all tuitions (optional filter by studentEmail)
+    app.get("/tuitions", async (req, res) => {
+      const { studentEmail } = req.query;
+      const query = studentEmail ? { studentEmail } : {};
+      const result = await tuitionCollection.find(query).sort({ createdAt: -1 }).toArray();
+      res.send(result);
+    });
 
     // 3️⃣ Get single tuition by ID
     app.get("/tuitions/:id", async (req, res) => {
@@ -448,12 +487,7 @@ app.get('/tutors/:id', async (req, res) => {
     });
 
     // 4️⃣ Get all tuitions of a specific student (My Tuitions)
-    app.get("/my-tuitions/:email", async (req, res) => {
-      const email = req.params.email;
-      const result = await tuitionCollection.find({ studentEmail: email }).sort({ createdAt: -1 }).toArray();
-      res.send(result);
-    });
-
+   
     // 5️⃣ Update tuition post
     app.put("/tuitions/:id", async (req, res) => {
       const id = req.params.id;
@@ -476,17 +510,20 @@ app.get('/tutors/:id', async (req, res) => {
 
 // PATCH application status
 
+
 app.patch("/applications/:id", async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id;
     const { qualifications, experience, expectedSalary, contact, status } = req.body;
 
-    if (!qualifications && !experience && !expectedSalary && !contact && !status) {
-      return res.status(400).send({ success: false, message: "Nothing to update" });
+    const application = await applicationsCollection.findOne({ _id: new ObjectId(id) });
+    if (!application) return res.status(404).send({ success: false, message: "Application not found" });
+
+    if (application.status === "Approved") {
+      return res.status(400).send({ success: false, message: "Cannot update approved application" });
     }
 
     const updateFields = {};
-
     if (qualifications) updateFields.qualifications = qualifications;
     if (experience) updateFields.experience = experience;
     if (expectedSalary) updateFields.expectedSalary = expectedSalary;
@@ -498,16 +535,54 @@ app.patch("/applications/:id", async (req, res) => {
       { $set: updateFields }
     );
 
-    if (result.modifiedCount > 0) {
-      res.send({ success: true, message: "Application updated successfully" });
-    } else {
-      res.send({ success: false, message: "No changes made or application not found" });
+    // যদি স্ট্যাটাস Approved হয়, tuition আপডেট
+    if (status === "Approved") {
+      await tuitionCollection.updateOne(
+        { _id: application.tuitionId },
+        { $set: { status: "Ongoing", tutorEmail: application.tutorEmail } }
+      );
     }
+
+    res.send({ success: true, result });
   } catch (err) {
     console.error(err);
     res.status(500).send({ success: false, message: "Failed to update application" });
   }
 });
+
+
+// app.patch("/applications/:id", async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { qualifications, experience, expectedSalary, contact, status } = req.body;
+
+//     if (!qualifications && !experience && !expectedSalary && !contact && !status) {
+//       return res.status(400).send({ success: false, message: "Nothing to update" });
+//     }
+
+//     const updateFields = {};
+
+//     if (qualifications) updateFields.qualifications = qualifications;
+//     if (experience) updateFields.experience = experience;
+//     if (expectedSalary) updateFields.expectedSalary = expectedSalary;
+//     if (contact) updateFields.contact = contact;
+//     if (status) updateFields.status = status;
+
+//     const result = await applicationsCollection.updateOne(
+//       { _id: new ObjectId(id) },
+//       { $set: updateFields }
+//     );
+
+//     if (result.modifiedCount > 0) {
+//       res.send({ success: true, message: "Application updated successfully" });
+//     } else {
+//       res.send({ success: false, message: "No changes made or application not found" });
+//     }
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).send({ success: false, message: "Failed to update application" });
+//   }
+// });
 
 
 
@@ -550,16 +625,6 @@ app.get('/my-applications/student/:email', async (req, res) => {
 });
 
 
-            //  Update application (My Applications page-Update)
-        app.patch('/applications/:id', async (req, res) => {
-            const id = req.params.id;
-            const updateData = req.body;
-            const result = await applicationsCollection.updateOne(
-                { _id: new ObjectId(id), status: { $ne: "Approved" } },
-                { $set: updateData }
-            );
-            res.send(result);
-        });
 
        // Delete application (My Applications page-Delete)
         app.delete('/applications/:id', async (req, res) => {
@@ -570,270 +635,8 @@ app.get('/my-applications/student/:email', async (req, res) => {
 
 
 ///////////////////////////////////// Applied tutors //////////////////////////////////////////////
-// app.get('/applications/student/:email', async (req, res) => {
-//   const studentEmail = req.params.email;
-
-//   try {
-
-//     // 1️⃣ Student er tuition gula ber koro
-//     const tuitions = await tuitionCollection.find({
-//       "student.email": studentEmail
-//     }).toArray();
-
-//     const tuitionIds = tuitions.map(t => t._id);
-
-//     if (!tuitionIds.length) {
-//       return res.send([]);
-//     }
-
-//     // 2️⃣ oi tuitionId diye applications gula find koro
-//     const applications = await applicationsCollection.find({
-//       tuitionId: { $in: tuitionIds }
-//     }).sort({ createdAt: -1 }).toArray();
-
-//     // 3️⃣ tutor info attach koro
-//     const tutorEmails = applications.map(a => a.tutorEmail);
-
-//     const tutors = await usersCollection.find({
-//       email: { $in: tutorEmails }
-//     }, {
-//       projection: {
-//         _id: 1,
-//         name: 1,
-//         email: 1,
-//         photoUrl: 1,
-//         qualifications: 1,
-//         experience: 1
-//       }
-//     }).toArray();
-
-//     const tutorMap = tutors.reduce((obj, t) => {
-//       obj[t.email] = t;
-//       return obj;
-//     }, {});
-
-//     const finalResult = applications.map(app => ({
-//       ...app,
-//       tuitionInfo: tuitions.find(t => t._id.equals(app.tuitionId)),
-//       tutorInfo: tutorMap[app.tutorEmail] || null
-//     }));
-
-//     res.send(finalResult);
-
-//   } catch (error) {
-//     console.error("Student Applications Error:", error);
-//     res.status(500).send({ error: "Failed to load applications" });
-//   }
-// });
-
-// Get all applications for a student (Applied Tutors)
-// app.get("/applications/student/:email", async (req, res) => {
-//   const studentEmail = req.params.email;
-
-//   try {
-//     const applications = await applicationsCollection.aggregate([
-//       {
-//         $lookup: {
-//           from: "tuition",
-//           localField: "tuitionId",
-//           foreignField: "_id",
-//           as: "tuitionInfo"
-//         }
-//       },
-//       { $unwind: "$tuitionInfo" },
-//       { $match: { "tuitionInfo.studentEmail": studentEmail } },
-//       {
-//         $lookup: {
-//           from: "users",
-//           let: { tutorEmail: "$tutorEmail" },
-//           pipeline: [
-//             { $match: { $expr: { $eq: ["$email", "$$tutorEmail"] } } },
-//             { $project: { _id: 1, name: 1, email: 1, photoUrl: 1, qualifications: 1, experience: 1 } }
-//           ],
-//           as: "tutorInfo"
-//         }
-//       },
-//       { $unwind: { path: "$tutorInfo", preserveNullAndEmptyArrays: true } },
-//       { $sort: { createdAt: -1 } }
-//     ]).toArray();
-
-//     res.send(applications);
-//   } catch (err) {
-//     console.error("Failed to fetch applied tutors:", err);
-//     res.status(500).send({ error: "Failed to fetch applied tutors" });
-//   }
-// });
 
 
-
-
-
-
-
-// app.get("/applications/student/:email", async (req, res) => {
-//   const studentEmail = req.params.email;
-
-//   try {
-//     const result = await applicationsCollection.aggregate([
-//       // Join tuition info
-//       {
-//         $lookup: {
-//           from: "tuitions",
-//           localField: "tuitionId",
-//           foreignField: "_id",
-//           as: "tuitionInfo"
-//         }
-//       },
-//       { $unwind: "$tuitionInfo" },
-
-//       // Filter by student email
-//       { $match: { "tuitionInfo.student.email": studentEmail } },
-
-//       // Join tutor info (optional, but nice)
-//       {
-//         $lookup: {
-//           from: "users",
-//           let: { tutorEmail: "$tutorEmail" },
-//           pipeline: [
-//             { $match: { $expr: { $eq: ["$email", "$$tutorEmail"] } } },
-//             { $project: { _id: 1, name: 1, email: 1, photoUrl: 1, qualifications: 1, experience: 1 } }
-//           ],
-//           as: "tutorInfo"
-//         }
-//       },
-//       { $unwind: { path: "$tutorInfo", preserveNullAndEmptyArrays: true } },
-
-//       { $sort: { createdAt: -1 } }
-//     ]).toArray();
-
-//     res.send(result);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).send({ error: "Failed to fetch applications" });
-//   }
-// });
-// app.get('/applications/student/:email', async (req, res) => {
-//   const studentEmail = req.params.email;
-
-//   try {
-//     const result = await applicationsCollection.aggregate([
-//       {
-//         $lookup: {
-//           from: "tuitions",
-//           localField: "tuitionId",
-//           foreignField: "_id",
-//           as: "tuitionInfo"
-//         }
-//       },
-//       { $unwind: "$tuitionInfo" },
-//       { $match: { "tuitionInfo.studentEmail": studentEmail } },
-//       { $sort: { createdAt: -1 } }
-//     ]).toArray();
-
-//     res.send(result);
-//   } catch (error) {
-//     console.error("Error fetching applications:", error);
-//     res.status(500).send({ error: "Failed to fetch applications" });
-//   }
-// });
-
-// app.get('/applications/student/:email', async (req, res) => {
-//   const studentEmail = req.params.email;
-
-//   try {
-//     const result = await applicationsCollection.aggregate([
-      
-//       {
-//         $lookup: {
-//           from: "tuition",
-//           localField: "tuitionId",
-//           foreignField: "_id",
-//           as: "tuitionInfo"
-//         }
-//       },
-//       { $unwind: "$tuitionInfo" },
-
-      
-//       { $match: { "tuitionInfo.studentEmail": studentEmail } },
-
-      
-//       {
-//         $lookup: {
-//           from: "users",
-//           let: { tutorEmail: "$tutorEmail" }, 
-//           pipeline: [
-//             { $match: { $expr: { $eq: ["$email", "$$tutorEmail"] } } },
-//             { $project: { _id: 1, name: 1, email: 1, photoUrl: 1, qualifications: 1, experience: 1, expectedSalary: 1 } }
-//           ],
-//           as: "tutorInfo"
-//         }
-//       },
-//       { $unwind: { path: "$tutorInfo", preserveNullAndEmptyArrays: true } },
-
-//       // 4️⃣ sort appliedAt descending
-//       { $sort: { createdAt: -1 } }
-
-//     ]).toArray();
-
-//     res.send(result);
-
-//   } catch (error) {
-//     console.error("Error fetching applications:", error);
-//     res.status(500).send({ error: "Failed to fetch applications" });
-//   }
-// });
-
-// app.get('/applications/student/:email', async (req, res) => {
-
-//   try {
-//     const email = req.params.email;
-
-//     const result = await applicationsCollection.aggregate([
-//       {
-//         $lookup: {
-//           from: "tuition",          // ✅ correct collection name
-//           localField: "tuitionId",
-//           foreignField: "_id",
-//           as: "tuitionInfo"
-//         }
-//       },
-//       { $unwind: "$tuitionInfo" },
-//       {
-//         $match: {
-//           "tuitionInfo.studentEmail": email   // ✅ correct field
-//         }
-//       },
-//       { $sort: { appliedAt: -1 } }
-//     ]).toArray();
-
-//     res.send(result);
-//   } catch (error) {
-//     console.error("Student Applications Error:", error);
-//     res.status(500).send({ error: "Failed to load applications" });
-//   }
-// });
-
-
-
-
-
-// Reject application
-///////////////////////////////////uporer 3 ta same/////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-app.patch('/applications/:id', async (req, res) => {
-  const id = req.params.id;
-  const updateData = req.body;
-  try {
-    const result = await applicationsCollection.updateOne(
-      { _id: new ObjectId(id), status: { $ne: "Approved" } },
-      { $set: updateData }
-    );
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to update application" });
-  }
-});
 
 // Payment checkout session
 app.post('/payment-checkout-session', async (req, res) => {
@@ -870,55 +673,55 @@ app.post('/payment-checkout-session', async (req, res) => {
 });
 
 // Verify payment success
-app.patch('/payment-success', async (req, res) => {
-  const sessionId = req.query.session_id;
-  try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+// app.patch('/payment-success', async (req, res) => {
+//   const sessionId = req.query.session_id;
+//   try {
+//     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    if (session.payment_status === 'paid') {
-      const transactionId = session.payment_intent;
-      const uniqueSessionId = session.id;
+//     if (session.payment_status === 'paid') {
+//       const transactionId = session.payment_intent;
+//       const uniqueSessionId = session.id;
 
-      const paymentExist = await paymentsCollection.findOne({ sessionId: uniqueSessionId });
-      if (paymentExist) return res.send(paymentExist);
+//       const paymentExist = await paymentsCollection.findOne({ sessionId: uniqueSessionId });
+//       if (paymentExist) return res.send(paymentExist);
 
-      const applicationId = session.metadata.applicationId;
-      const tuitionId = session.metadata.tuitionId;
-      const tutorEmail = session.metadata.tutorEmail;
+//       const applicationId = session.metadata.applicationId;
+//       const tuitionId = session.metadata.tuitionId;
+//       const tutorEmail = session.metadata.tutorEmail;
 
-      const application = await applicationsCollection.findOne({ _id: new ObjectId(applicationId) });
-      const tuition = await tuitionCollection.findOne({ _id: new ObjectId(tuitionId) });
+//       const application = await applicationsCollection.findOne({ _id: new ObjectId(applicationId) });
+//       const tuition = await tuitionCollection.findOne({ _id: new ObjectId(tuitionId) });
 
-      const payment = {
-        amount: session.amount_total / 100,
-        currency: session.currency,
-        studentEmail: session.customer_email,
-        tutorEmail,
-        tutorName: application.tutorName,
-        subject: tuition.subject,
-        class: tuition.class,
-        paidAt: new Date(),
-        transactionId,
-        sessionId: uniqueSessionId,
-        applicationId,
-        tuitionId,
-        paymentStatus: session.payment_status
-      };
+//       const payment = {
+//         amount: session.amount_total / 100,
+//         currency: session.currency,
+//         studentEmail: session.customer_email,
+//         tutorEmail,
+//         tutorName: application.tutorName,
+//         subject: tuition.subject,
+//         class: tuition.class,
+//         paidAt: new Date(),
+//         transactionId,
+//         sessionId: uniqueSessionId,
+//         applicationId,
+//         tuitionId,
+//         paymentStatus: session.payment_status
+//       };
 
-      await paymentsCollection.insertOne(payment);
-      await applicationsCollection.updateOne(
-        { _id: new ObjectId(applicationId) },
-        { $set: { status: "Approved", transactionId } }
-      );
+//       await paymentsCollection.insertOne(payment);
+//       await applicationsCollection.updateOne(
+//         { _id: new ObjectId(applicationId) },
+//         { $set: { status: "Approved", transactionId } }
+//       );
 
-      return res.send(payment);
-    }
-    return res.send({ success: false });
-  } catch (error) {
-    console.error("Payment success error:", error);
-    res.status(500).send({ error: "Failed to verify payment" });
-  }
-});
+//       return res.send(payment);
+//     }
+//     return res.send({ success: false });
+//   } catch (error) {
+//     console.error("Payment success error:", error);
+//     res.status(500).send({ error: "Failed to verify payment" });
+//   }
+// });
 
 
 /////////////////////////////////////// Tutor   ///////////////////////////////////////
@@ -964,27 +767,27 @@ app.delete("/applications/:id", async (req, res) => {
 
 
 
-app.patch("/applications/:id", async (req, res) => {
-  const id = req.params.id;
-  const { status } = req.body;
+// app.patch("/applications/:id", async (req, res) => {
+//   const id = req.params.id;
+//   const { status } = req.body;
 
-  // Update application status
-  const result = await applicationsCollection.updateOne(
-    { _id: new ObjectId(id) },
-    { $set: { status } }
-  );
+//   // Update application status
+//   const result = await applicationsCollection.updateOne(
+//     { _id: new ObjectId(id) },
+//     { $set: { status } }
+//   );
 
   
-  if (status === "Approved") {
-    const application = await applicationsCollection.findOne({ _id: new ObjectId(id) });
-    await tuitionCollection.updateOne(
-      { _id: application.tuitionId },
-      { $set: { status: "Ongoing", tutorEmail: application.tutorEmail } }
-    );
-  }
+//   if (status === "Approved") {
+//     const application = await applicationsCollection.findOne({ _id: new ObjectId(id) });
+//     await tuitionCollection.updateOne(
+//       { _id: application.tuitionId },
+//       { $set: { status: "Ongoing", tutorEmail: application.tutorEmail } }
+//     );
+//   }
 
-  res.send(result);
-});
+//   res.send(result);
+// });
 
 
 
@@ -1027,35 +830,9 @@ app.patch("/tuitions/:id/status", async (req, res) => {
   }
 });
 
-app.get("/tuitions", async (req, res) => {
-  try {
-    const { subject, location, className, sort, page = 1, limit = 6 } = req.query;
 
 
-    let query = { status: "Approved" };
 
-    if (subject) query.subject = { $regex: subject, $options: "i" };
-    if (location) query.location = { $regex: location, $options: "i" };
-    if (className) query.class = className;
-
-    let cursor = tuitionCollection.find(query);
-
-    if (sort === "budget") cursor = cursor.sort({ budget: 1 });
-    if (sort === "date") cursor = cursor.sort({ createdAt: -1 });
-
-    const result = await cursor
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit))
-      .toArray();
-
-    res.send(result);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send({ message: "Internal Server Error" });
-  }
-});
-
-//Student-এর নিজের টিউশন দেখানোর API//
 
 app.get("/tuitions/student", async (req, res) => {
   try {
