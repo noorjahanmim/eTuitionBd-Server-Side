@@ -63,8 +63,6 @@ app.post('/users', async (req, res) => {
 //////////////Get all tuition\\\\\\\\\\\\\\\\\
 
 
-// GET all tuitions with optional filters
-
 
 /////sudhu approve show hobe/////
 
@@ -91,7 +89,7 @@ app.post("/tuitions", async (req, res) => {
   try {
     const tuitionData = req.body;
 
-    tuitionData.status = "Approved"; 
+    tuitionData.status = "Pending"; 
     tuitionData.createdAt = new Date();
 
     const result = await tuitionCollection.insertOne(tuitionData);
@@ -102,8 +100,10 @@ app.post("/tuitions", async (req, res) => {
   }
 });
 
+ 
 
-///////Student নিজের Tuition দেখবে (সব status সহ)////////
+
+///////Student nijer Tuition dekhbe////////
 
  app.get("/my-tuitions/:email", async (req, res) => {
       const email = req.params.email;
@@ -299,10 +299,10 @@ app.post("/apply-tuition", async (req, res) => {
     // ---------- 🎯 STEP-1: Tuition ObjectId Ensure ----------
     const tuitionObjId = new ObjectId(application.tuitionId);
 
-    // ---------- 🎯 STEP-2: Tuition থেকে Student Email নিয়ে আসো ----------
+    // ---------- 🎯 STEP-2: Tuition theke Student Email  ----------
     const tuition = await tuitionCollection.findOne({ _id: tuitionObjId });
 
-    // 👉 এখানে student email save করলাম
+    // student email save 
     application.studentEmail =
       tuition?.student?.email || tuition?.studentEmail || null;
 
@@ -394,26 +394,7 @@ app.get('/tutors/:id', async (req, res) => {
 
 
         // POST: Create new tuition post
-    app.post("/tuitions", async (req, res) => {
-      try {
-        const tuitionData = req.body;
-
-        // Basic validation
-        if (!tuitionData.subject || !tuitionData.class || !tuitionData.location || !tuitionData.budget) {
-          return res.status(400).send({ message: "Missing required fields" });
-        }
-
-        // Default values
-        tuitionData.status = "pending"; // always pending until admin approves
-        tuitionData.createdAt = new Date();
-
-        const result = await tuitionCollection.insertOne(tuitionData);
-        res.status(201).send(result);
-      } catch (error) {
-        console.error("Error posting tuition:", error);
-        res.status(500).send({ message: "Internal Server Error" });
-      }
-    });
+  
 
 
     // PUT: Update tuition post
@@ -678,105 +659,6 @@ app.put("/applications/:id", async (req, res) => {
     res.status(500).send({ error: "Failed to update status" });
   }
 });
-
-
-
-
-
-////////////////////////////////////////_________//////////////////////////////////////////////////////////////////
-// // Payment checkout session
-// app.post('/payment-checkout-session', async (req, res) => {
-//   const { applicationId, expectedSalary, tutorEmail, tutorName, subject, tuitionClass, tuitionId, studentEmail } = req.body;
-//   const amount = parseInt(expectedSalary) * 100;
-
-//   try {
-//     const session = await stripe.checkout.sessions.create({
-//       line_items: [
-//         {
-//           price_data: {
-//             currency: 'usd',
-//             unit_amount: amount,
-//             product_data: {
-//               name: `Tuition: ${subject} | Class : ${tuitionClass}`,
-//               description: `Tutor: ${tutorName} | Email: ${tutorEmail}`
-//             }
-//           },
-//           quantity: 1
-//         }
-//       ],
-//       mode: 'payment',
-//       metadata: { applicationId, tuitionId, tutorEmail },
-//       customer_email: studentEmail,
-//       success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-//       cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled`
-//     });
-
-//     res.send({ url: session.url });
-//   } catch (error) {
-//     console.error("Stripe session error:", error);
-//     res.status(500).send({ error: "Failed to create checkout session" });
-//   }
-// });
-
-// //Verify payment success
-// app.patch('/payment-success', async (req, res) => {
-//   const sessionId = req.query.session_id;
-//   try {
-//     const session = await stripe.checkout.sessions.retrieve(sessionId);
-
-//     if (session.payment_status === 'paid') {
-//       const transactionId = session.payment_intent;
-//       const uniqueSessionId = session.id;
-
-//       const paymentExist = await paymentsCollection.findOne({ sessionId: uniqueSessionId });
-//       if (paymentExist) return res.send(paymentExist);
-
-//       const applicationId = session.metadata.applicationId;
-//       const tuitionId = session.metadata.tuitionId;
-//       const tutorEmail = session.metadata.tutorEmail;
-
-//       const application = await applicationsCollection.findOne({ _id: new ObjectId(applicationId) });
-//       const tuition = await tuitionCollection.findOne({ _id: new ObjectId(tuitionId) });
-
-//       const payment = {
-//         amount: session.amount_total / 100,
-//         currency: session.currency,
-//         studentEmail: session.customer_email,
-//         tutorEmail,
-//         tutorName: application.tutorName,
-//         subject: tuition.subject,
-//         class: tuition.class,
-//         paidAt: new Date(),
-//         transactionId,
-//         sessionId: uniqueSessionId,
-//         applicationId,
-//         tuitionId,
-//         paymentStatus: session.payment_status
-//       };
-
-//       await paymentsCollection.insertOne(payment);
-//       await applicationsCollection.updateOne(
-//         { _id: new ObjectId(applicationId) },
-//         { $set: { status: "Approved", transactionId } }
-//       );
-
-//       return res.send(payment);
-//     }
-//     return res.send({ success: false });
-//   } catch (error) {
-//     console.error("Payment success error:", error);
-//     res.status(500).send({ error: "Failed to verify payment" });
-//   }
-// });
-
-
-
-
-
-
-
-
-
 
 
 
